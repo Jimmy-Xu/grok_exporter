@@ -243,6 +243,7 @@ func createMetrics(cfg *v3.Config, patterns *exporter.Patterns) ([]exporter.Metr
 			regex, deleteRegex *oniguruma.Regex
 			err                error
 		)
+		fmt.Printf("match:%s\n", m.Match)
 		regex, err = exporter.Compile(m.Match, patterns)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize metric %v: %v", m.Name, err.Error())
