@@ -15,8 +15,10 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -30,6 +32,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
+
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 )
 
 var (
@@ -236,14 +241,31 @@ func initPatterns(cfg *v3.Config) (*exporter.Patterns, error) {
 	return patterns, nil
 }
 
+func Utf8ToGbk(s []byte) ([]byte, error) {
+	reader := transform.NewReader(bytes.NewReader(s), simplifiedchinese.GBK.NewEncoder())
+	d, e := ioutil.ReadAll(reader)
+	if e != nil {
+		return nil, e
+	}
+	return d, nil
+}
+
 func createMetrics(cfg *v3.Config, patterns *exporter.Patterns) ([]exporter.Metric, error) {
 	result := make([]exporter.Metric, 0, len(cfg.AllMetrics))
 	for _, m := range cfg.AllMetrics {
 		var (
 			regex, deleteRegex *oniguruma.Regex
+			gbk []byte
 			err                error
 		)
+
+		gbk, err = Utf8ToGbk([]byte(m.Match))
+		if err !=nil {
+			panic(err)
+		}
+		m.Match = string(gbk)
 		fmt.Printf("match:%s\n", m.Match)
+
 		regex, err = exporter.Compile(m.Match, patterns)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize metric %v: %v", m.Name, err.Error())
